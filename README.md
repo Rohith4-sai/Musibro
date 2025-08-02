@@ -191,4 +191,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ for music lovers everywhere**
 
-*Breaking bias, exploring diversity, personalizing your musical journey* 
+*Breaking bias, exploring diversity, personalizing your musical journey* "# Musibro" 
