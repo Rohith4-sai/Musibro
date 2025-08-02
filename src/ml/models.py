@@ -7,16 +7,14 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.cluster import KMeans
 from sklearn.neighbors import NearestNeighbors
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 import logging
 import pickle
 import os
 from datetime import datetime
 
 class NeuralCollaborativeFiltering:
-    """Neural Collaborative Filtering for user-item interactions"""
+    """Neural Collaborative Filtering using scikit-learn MLPRegressor"""
     
     def __init__(self, num_users: int, num_items: int, embedding_dim: int = 50, 
                  hidden_dims: List[int] = [128, 64, 32]):
@@ -25,41 +23,31 @@ class NeuralCollaborativeFiltering:
         self.embedding_dim = embedding_dim
         self.hidden_dims = hidden_dims
         self.model = None
+        self.user_encoder = LabelEncoder()
+        self.item_encoder = LabelEncoder()
+        self.scaler = StandardScaler()
         self.logger = logging.getLogger(__name__)
     
     def build_model(self):
-        """Build the neural collaborative filtering model"""
+        """Build the neural collaborative filtering model using MLPRegressor"""
         try:
-            # User and item inputs
-            user_input = keras.Input(shape=(), name='user_id')
-            item_input = keras.Input(shape=(), name='item_id')
-            
-            # Embedding layers
-            user_embedding = layers.Embedding(self.num_users, self.embedding_dim, name='user_embedding')(user_input)
-            item_embedding = layers.Embedding(self.num_items, self.embedding_dim, name='item_embedding')(item_input)
-            
-            # Flatten embeddings
-            user_vec = layers.Flatten()(user_embedding)
-            item_vec = layers.Flatten()(item_embedding)
-            
-            # Concatenate user and item vectors
-            concat = layers.Concatenate()([user_vec, item_vec])
-            
-            # Hidden layers with dropout for regularization
-            x = concat
-            for dim in self.hidden_dims:
-                x = layers.Dense(dim, activation='relu')(x)
-                x = layers.Dropout(0.2)(x)
-            
-            # Output layer
-            output = layers.Dense(1, activation='sigmoid', name='rating')(x)
-            
-            # Create model
-            self.model = keras.Model(inputs=[user_input, item_input], outputs=output)
-            self.model.compile(
-                optimizer='adam',
-                loss='mse',
-                metrics=['mae']
+            # Use MLPRegressor as a lightweight alternative to TensorFlow
+            hidden_layer_sizes = tuple(self.hidden_dims)
+            self.model = MLPRegressor(
+                hidden_layer_sizes=hidden_layer_sizes,
+                activation='relu',
+                solver='adam',
+                alpha=0.001,  # L2 regularization
+                batch_size='auto',
+                learning_rate='adaptive',
+                learning_rate_init=0.001,
+                max_iter=200,
+                shuffle=True,
+                random_state=42,
+                early_stopping=True,
+                validation_fraction=0.1,
+                n_iter_no_change=10,
+                verbose=False
             )
             
             return self.model
@@ -74,20 +62,20 @@ class NeuralCollaborativeFiltering:
             if self.model is None:
                 self.build_model()
             
-            # Prepare data
-            X = {'user_id': user_ids, 'item_id': item_ids}
-            y = ratings
+            # Encode user and item IDs
+            user_ids_encoded = self.user_encoder.fit_transform(user_ids)
+            item_ids_encoded = self.item_encoder.fit_transform(item_ids)
+            
+            # Create feature matrix
+            X = np.column_stack([user_ids_encoded, item_ids_encoded])
+            
+            # Scale features
+            X_scaled = self.scaler.fit_transform(X)
             
             # Train model
-            history = self.model.fit(
-                X, y,
-                validation_split=validation_split,
-                epochs=epochs,
-                batch_size=batch_size,
-                verbose=1
-            )
+            self.model.fit(X_scaled, ratings)
             
-            return history
+            return {"loss": self.model.loss_, "n_iter": self.model.n_iter_}
         except Exception as e:
             self.logger.error(f"Failed to train NCF model: {e}")
             return None
@@ -98,9 +86,19 @@ class NeuralCollaborativeFiltering:
             if self.model is None:
                 raise ValueError("Model not trained")
             
-            X = {'user_id': user_ids, 'item_id': item_ids}
-            predictions = self.model.predict(X)
-            return predictions.flatten()
+            # Encode user and item IDs
+            user_ids_encoded = self.user_encoder.transform(user_ids)
+            item_ids_encoded = self.item_encoder.transform(item_ids)
+            
+            # Create feature matrix
+            X = np.column_stack([user_ids_encoded, item_ids_encoded])
+            
+            # Scale features
+            X_scaled = self.scaler.transform(X)
+            
+            # Predict
+            predictions = self.model.predict(X_scaled)
+            return predictions
         except Exception as e:
             self.logger.error(f"Failed to predict with NCF model: {e}")
             return np.array([])

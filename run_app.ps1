@@ -4,5 +4,10 @@ Write-Host ""
 # Activate virtual environment
 & ".\venv311\Scripts\Activate.ps1"
 
-# Run the Streamlit app
+# Verify Python version
+Write-Host "🐍 Python Version:" -ForegroundColor Cyan
+python --version
+
+Write-Host ""
+Write-Host "🚀 Starting Streamlit app..." -ForegroundColor Green
 streamlit run app.py 

@@ -1,3 +1,4 @@
+import sys
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -10,6 +11,13 @@ from src.ml.debiasing import DiversityInjector
 from src.ui.components import MusicPlayerComponent, FeedbackComponent
 from src.utils.config import Config
 from src.utils.helpers import UIHelpers, DataProcessor
+
+# Display Python version in sidebar for verification
+st.sidebar.write(f"🐍 Python Version: {sys.version}")
+if "3.11" in sys.version:
+    st.sidebar.success("✅ Using Python 3.11")
+else:
+    st.sidebar.warning(f"⚠️ Using Python {sys.version.split()[0]}")
 
 # Page configuration
 st.set_page_config(
